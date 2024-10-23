@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pong Game</title>
+    <style>
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: #000;
+        }
+        .menu, .end-screen {
+            text-align: center;
+            margin-top: 100px;
+        }
+        .menu button, .end-screen button {
+            padding: 15px 30px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Start Menu -->
+<div class="menu">
+    <h1>Pong Game</h1>
+    <button id="startGameButton">Start Game</button>
+</div>
+
+<!-- End Screen -->
+<div class="end-screen" style="display: none;">
+    <h1 id="endMessage">Game Over</h1>
+    <button id="restartGameButton">Play Again</button>
+</div>
+
+<!-- Game Canvas -->
+<canvas id="pongCanvas" width="800" height="400" style="display: none;"></canvas>
+
+<script>
+    const canvas = document.getElementById("pongCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const startGameButton = document.getElementById("startGameButton");
+    const restartGameButton = document.getElementById("restartGameButton");
+    const menu = document.querySelector(".menu");
+    const endScreen = document.querySelector(".end-screen");
+    const endMessage = document.getElementById("endMessage");
+
+    // Game Elements
+    const paddleWidth = 10, paddleHeight = 100, ballRadius = 10;
+    let ballX = canvas.width / 2, ballY = canvas.height / 2;
+    let ballSpeedX = 5, ballSpeedY = 5;
+
+    // Player Paddles
+    let paddle1Y = (canvas.height - paddleHeight) / 2;
+    let paddle2Y = (canvas.height - paddleHeight) / 2;
+    const paddleSpeed = 10;
+
+    // Player Scores
+    let player1Score = 0, player2Score = 0;
+    const winningScore = 5;
+
+    // Input (key press)
+    let upArrowPressed = false, downArrowPressed = false;
+
+    function drawRect(x, y, width, height, color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, width, height);
+    }
+
+    function drawCircle(x, y, radius, color) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    function drawText(text, x, y, color) {
+        ctx.fillStyle = color;
+        ctx.font = "35px Arial";
+        ctx.fillText(text, x, y);
+    }
+
+    // Render Game
+    function render() {
+        // Clear the canvas
+        drawRect(0, 0, canvas.width, canvas.height, "#000");
+
+        // Draw paddles
+        drawRect(0, paddle1Y, paddleWidth, paddleHeight, "#FFF"); // Player 1 paddle (left)
+        drawRect(canvas.width - paddleWidth, paddle2Y, paddleWidth, paddleHeight, "#FFF"); // Player 2 paddle (right)
+
+        // Draw ball
+        drawCircle(ballX, ballY, ballRadius, "#FFF");
+
+        // Draw scores
+        drawText(player1Score, canvas.width / 4, 50, "#FFF");
+        drawText(player2Score, (3 * canvas.width) / 4, 50, "#FFF");
+    }
+
+    // Update Game Elements (Movement, Collisions, Scores)
+    function update() {
+        ballX += ballSpeedX;
+        ballY += ballSpeedY;
+
+        // Ball collision with top and bottom walls
+        if (ballY - ballRadius < 0 || ballY + ballRadius > canvas.height) {
+            ballSpeedY = -ballSpeedY;
+        }
+
+        // Ball collision with paddles
+        if (ballX - ballRadius < paddleWidth) { // Left paddle (AI)
+            if (ballY > paddle1Y && ballY < paddle1Y + paddleHeight) {
+                ballSpeedX = -ballSpeedX;
+            } else {
+                player2Score++;
+                resetBall();
+            }
+        }
+        if (ballX + ballRadius > canvas.width - paddleWidth) { // Right paddle (Player 2)
+            if (ballY > paddle2Y && ballY < paddle2Y + paddleHeight) {
+                ballSpeedX = -ballSpeedX;
+            } else {
+                player1Score++;
+                resetBall();
+            }
+        }
+
+        // Move paddles
+        if (upArrowPressed && paddle2Y > 0) {
+            paddle2Y -= paddleSpeed;
+        } else if (downArrowPressed && paddle2Y < canvas.height - paddleHeight) {
+            paddle2Y += paddleSpeed;
+        }
+
+        // Slow AI for Player 1 paddle
+        let aiSpeed = 3; // Slower speed for AI paddle movement
+        if (paddle1Y + paddleHeight / 2 < ballY - 35) { // AI moves down if the ball is below
+            paddle1Y += aiSpeed;
+        } else if (paddle1Y + paddleHeight / 2 > ballY + 35) { // AI moves up if the ball is above
+            paddle1Y -= aiSpeed;
+        }
+
+        // Check for winning condition
+        if (player1Score === winningScore || player2Score === winningScore) {
+            endGame();
+        }
+    }
+
+    // Reset Ball to Center
+    function resetBall() {
+        ballX = canvas.width / 2;
+        ballY = canvas.height / 2;
+        ballSpeedX = -ballSpeedX;
+    }
+
+    // Game Loop
+    function gameLoop() {
+        render();
+        update();
+    }
+
+    // End Game and Show End Screen
+    function endGame() {
+        clearInterval(gameInterval);
+        canvas.style.display = "none"; // Hide game canvas
+        endScreen.style.display = "block"; // Show end screen
+
+        // Set the winning message
+        if (player1Score === winningScore) {
+            endMessage.innerText = "AI Wins!";
+        } else if (player2Score === winningScore) {
+            endMessage.innerText = "You Win!";
+        }
+
+        // Reset scores for the next game
+        player1Score = 0;
+        player2Score = 0;
+    }
+
+    // Handle Keyboard Inputs
+    window.addEventListener("keydown", function(event) {
+        if (event.key === "ArrowUp") {
+            upArrowPressed = true;
+        }
+        if (event.key === "ArrowDown") {
+            downArrowPressed = true;
+        }
+    });
+
+    window.addEventListener("keyup", function(event) {
+        if (event.key === "ArrowUp") {
+            upArrowPressed = false;
+        }
+        if (event.key === "ArrowDown") {
+            downArrowPressed = false;
+        }
+    });
+
+    // Run game loop at 60 FPS
+    let gameInterval;
+
+    // Start the Game
+    startGameButton.addEventListener("click", function() {
+        menu.style.display = "none"; // Hide menu
+        canvas.style.display = "block"; // Show game canvas
+        gameInterval = setInterval(gameLoop, 1000 / 60); // Start game loop
+    });
+
+    // Restart the Game from End Screen
+    restartGameButton.addEventListener("click", function() {
+        endScreen.style.display = "none"; // Hide end screen
+        canvas.style.display = "block"; // Show game canvas
+        gameInterval = setInterval(gameLoop, 1000 / 60); // Start game loop again
+    });
+</script>
+
+</body>
+</html>
